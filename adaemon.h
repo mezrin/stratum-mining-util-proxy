@@ -43,6 +43,8 @@ class ADaemon : public QObject {
 
         int _pool_port;
 
+        QList<QPair<QTcpSocket*,QByteArray> > _pool_data_list;
+
     private slots:
         //! Слот сигнала потери соединения с управляющим терминалом.
         void onSigHupHandle();
@@ -59,8 +61,14 @@ class ADaemon : public QObject {
         //! Слот закрытия сетевых соединений с майнером и пулом.
         void onMinerSocketDisconnected();
 
+        //! Слот подключения пула.
+        void onPoolSocketConnected();
+
         //! Слот приёма сетевых сообщений от пула.
         void onPoolSocketReadyRead();
+
+        //! Слот обработки ошибок сетевой передачи данных пула.
+        void onPoolSocketError();
 
 };
 

@@ -3,6 +3,7 @@
 #include <signal.h>
 
 #include <QtCore/QCoreApplication>
+#include <QtCore/QTimer>
 
 #include <QtNetwork/QTcpServer>
 
@@ -83,7 +84,7 @@ ADaemon::ADaemon(QObject *parent)
 // Слот активации сервера.
 // ========================================================================== //
 void ADaemon::onListen() {
-    if(_server->isListening()) _server->close();
+    if(_server->isListening()) {_server->close(); _pool_data_list.clear();}
 
     if(!_server->listen(QHostAddress::Any, _server_port))
         qFatal("Server is not listen!");
@@ -138,8 +139,12 @@ void ADaemon::onServerNewConnection() {
     pool_socket->setProperty("miner_socket"
         , QVariant::fromValue((QObject*)miner_socket));
 
+    connect(pool_socket, SIGNAL(connected())
+        , this, SLOT(onPoolSocketConnected()));
     connect(pool_socket, SIGNAL(readyRead())
         , this, SLOT(onPoolSocketReadyRead()));
+    connect(pool_socket, SIGNAL(error(QAbstractSocket::SocketError))
+        , this, SLOT(onPoolSocketError()), Qt::QueuedConnection);
 
     pool_socket->connectToHost(_pool_host, _pool_port);
 
@@ -155,10 +160,16 @@ void ADaemon::onMinerSocketReadyRead() {
     QTcpSocket *miner_socket = qobject_cast<QTcpSocket*>(sender());
     if(!miner_socket) return;
 
-    QVariant pool_socket_var = miner_socket->property("pool_socket");
-    if(pool_socket_var.canConvert<QTcpSocket*>()) {
-        QTcpSocket *pool_socket = pool_socket_var.value<QTcpSocket*>();
-        pool_socket->write(miner_socket->readAll());
+    QVariant socket_var = miner_socket->property("pool_socket");
+    if(socket_var.isValid() && socket_var.canConvert<QTcpSocket*>()) {
+        QTcpSocket *pool_socket = socket_var.value<QTcpSocket*>();
+        if(pool_socket->state() == QAbstractSocket::ConnectedState) {
+            pool_socket->write(miner_socket->readAll());
+
+        } else {
+            _pool_data_list.append(
+                qMakePair(pool_socket, miner_socket->readAll()));
+        }
     }
 }
 
@@ -170,14 +181,35 @@ void ADaemon::onMinerSocketDisconnected() {
     QTcpSocket *miner_socket = qobject_cast<QTcpSocket*>(sender());
     if(!miner_socket) return;
 
-    QVariant pool_socket_var = miner_socket->property("pool_socket");
-    if(pool_socket_var.canConvert<QTcpSocket*>()) {
-        QTcpSocket *pool_socket = pool_socket_var.value<QTcpSocket*>();
+    QVariant socket_var = miner_socket->property("pool_socket");
+    if(socket_var.isValid() && socket_var.canConvert<QTcpSocket*>()) {
+        QTcpSocket *pool_socket = socket_var.value<QTcpSocket*>();
         pool_socket->disconnectFromHost();
         pool_socket->deleteLater();
+
+        miner_socket->setProperty("pool_socket", QVariant());
     }
 
     miner_socket->deleteLater();
+}
+
+
+// ========================================================================== //
+// Слот подключения пула.
+// ========================================================================== //
+void ADaemon::onPoolSocketConnected() {
+    QTcpSocket *pool_socket = qobject_cast<QTcpSocket*>(sender());
+    if(!pool_socket || _pool_data_list.isEmpty()) return;
+
+    QMutableListIterator<QPair<QTcpSocket*,QByteArray> > iter(_pool_data_list);
+    while(iter.hasNext()) {
+        QPair<QTcpSocket*,QByteArray> &pair = iter.next();
+        if(pair.first != pool_socket) continue;
+
+        pair.first->write(pair.second);
+
+        iter.remove(); break;
+    }
 }
 
 
@@ -188,9 +220,19 @@ void ADaemon::onPoolSocketReadyRead() {
     QTcpSocket *pool_socket = qobject_cast<QTcpSocket*>(sender());
     if(!pool_socket) return;
 
-    QVariant miner_socket_var = pool_socket->property("miner_socket");
-    if(miner_socket_var.canConvert<QTcpSocket*>()) {
-        QTcpSocket *miner_socket = miner_socket_var.value<QTcpSocket*>();
-        miner_socket->write(pool_socket->readAll());
+    QVariant socket_var = pool_socket->property("miner_socket");
+    if(socket_var.isValid() && socket_var.canConvert<QTcpSocket*>()) {
+        QTcpSocket *miner_socket = socket_var.value<QTcpSocket*>();
+        if(miner_socket->state() == QAbstractSocket::ConnectedState)
+            miner_socket->write(pool_socket->readAll());
     }
+}
+
+
+// ========================================================================== //
+// Слот обработки ошибок сетевой передачи данных пула.
+// ========================================================================== //
+void ADaemon::onPoolSocketError() {
+    QTcpSocket *pool_socket = qobject_cast<QTcpSocket*>(sender());
+    if(pool_socket) pool_socket->connectToHost(_pool_host, _pool_port);
 }
