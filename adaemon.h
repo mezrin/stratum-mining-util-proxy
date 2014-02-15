@@ -7,6 +7,7 @@
 #include <QtNetwork/QTcpSocket>
 
 class QTcpServer;
+class QTimer;
 
 class ADaemon : public QObject {
     Q_OBJECT
@@ -28,12 +29,20 @@ class ADaemon : public QObject {
         //! Деструктор.
         virtual ~ADaemon() {}
 
+        //! Функция установки интервала чтения конфигурационного файла.
+        void setConfigReaderInterval(int minutes);
+
+        //! Функция установки порта сервера.
+        void setServerPort(int port);
+
     public slots:
         //! Слот активации сервера.
         void onListen();
 
     private:
         QSocketNotifier *_sig_hup_socket_notifier, *_sig_term_socket_notifier;
+
+        QTimer *_config_timer;
 
         QTcpServer *_server;
 
@@ -51,6 +60,9 @@ class ADaemon : public QObject {
 
         //! Слот сигнала запроса завершения процесса.
         void onSigTermHandle();
+
+        //! Слот загрузки конфигурационного файла.
+        void onLoadConfiguration();
 
         //! Слот открытия нового соединения с сервером.
         void onServerNewConnection();

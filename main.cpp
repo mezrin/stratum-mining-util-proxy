@@ -36,6 +36,8 @@ int startProcess(int argc, char *argv[]) {
     cmd_line_parser.addOption(terminal_option);
     cmd_line_parser.process(app);
 
+    QMetaObject::invokeMethod(&daemon, "onListen", Qt::QueuedConnection);
+
     return app.exec();
 }
 

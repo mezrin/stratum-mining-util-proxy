@@ -4,6 +4,7 @@
 
 #include <QtCore/QCoreApplication>
 #include <QtCore/QTimer>
+#include <QtCore/QFile>
 
 #include <QtNetwork/QTcpServer>
 
@@ -72,11 +73,36 @@ ADaemon::ADaemon(QObject *parent)
             , this, SLOT(onSigTermHandle()));
     }
 
+    _config_timer = new QTimer(this);
+    _config_timer->setInterval(60000);
+    _config_timer->setSingleShot(false);
+
+    connect(_config_timer, SIGNAL(timeout())
+        , this, SLOT(onLoadConfiguration()));
+
+    _config_timer->start();
+
     _server = new QTcpServer(this);
     _server->setMaxPendingConnections(100);
 
     connect(_server, SIGNAL(newConnection())
         , this, SLOT(onServerNewConnection()));
+}
+
+
+// ========================================================================== //
+// Функция установки интервала чтения конфигурационного файла.
+// ========================================================================== //
+void ADaemon::setConfigReaderInterval(int minutes) {
+    if(minutes > 0) _config_timer->setInterval(minutes * 60000);
+}
+
+
+// ========================================================================== //
+// Функция установки порта сервера.
+// ========================================================================== //
+void ADaemon::setServerPort(int port) {
+    if(port > 0) _server_port = port;
 }
 
 
@@ -120,6 +146,38 @@ void ADaemon::onSigTermHandle() {
     _sig_term_socket_notifier->setEnabled(true);
 
     emit sigterm();
+}
+
+
+// ========================================================================== //
+// Слот загрузки конфигурационного файла.
+// ========================================================================== //
+void ADaemon::onLoadConfiguration() {
+    QFile file(QCoreApplication::applicationDirPath() + "/stratumproxy.cfg");
+    if(!file.open(QFile::ReadOnly)) return;
+
+    QTextStream stream(&file);
+
+    QString line;
+    do {
+        line = stream.readLine().trimmed();
+        if(!line.startsWith('#') && line.contains(':')) {
+            QString host = line.section(':', 0, 0);
+            QString port = line.section(':', 1, 1);
+            if(!host.isEmpty() && !port.isEmpty()) {
+                _pool_host = host;
+
+                bool ok = false;
+                int p = port.toInt(&ok);
+                if(ok) _pool_port = p;
+
+                break;
+            }
+        }
+
+    } while(!line.isEmpty());
+
+    file.close();
 }
 
 
