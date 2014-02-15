@@ -4,6 +4,10 @@
 #include <QtCore/QSocketNotifier>
 #include <QtCore/QObject>
 
+#include <QtNetwork/QTcpSocket>
+
+class QTcpServer;
+
 class ADaemon : public QObject {
     Q_OBJECT
 
@@ -24,8 +28,20 @@ class ADaemon : public QObject {
         //! Деструктор.
         virtual ~ADaemon() {}
 
+    public slots:
+        //! Слот активации сервера.
+        void onListen();
+
     private:
         QSocketNotifier *_sig_hup_socket_notifier, *_sig_term_socket_notifier;
+
+        QTcpServer *_server;
+
+        int _server_port;
+
+        QString _pool_host;
+
+        int _pool_port;
 
     private slots:
         //! Слот сигнала потери соединения с управляющим терминалом.
@@ -33,6 +49,18 @@ class ADaemon : public QObject {
 
         //! Слот сигнала запроса завершения процесса.
         void onSigTermHandle();
+
+        //! Слот открытия нового соединения с сервером.
+        void onServerNewConnection();
+
+        //! Слот приёма сетевых сообщений от майнеров.
+        void onMinerSocketReadyRead();
+
+        //! Слот закрытия сетевых соединений с майнером и пулом.
+        void onMinerSocketDisconnected();
+
+        //! Слот приёма сетевых сообщений от пула.
+        void onPoolSocketReadyRead();
 
 };
 
