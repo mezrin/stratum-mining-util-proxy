@@ -67,7 +67,11 @@ int main(int argc, char *argv[]) {
     bool has_terminal = false;
     for(int i = 1; i < argc; ++i) {
         QString arg = argv[i];
-        if(arg == "-t" || arg == "--terminal") {has_terminal = true; break;}
+        if(arg == "-t" || arg == "--terminal"
+            || arg == "-h" || arg == "--help") {
+
+            has_terminal = true; break;
+        }
     }
 
     if(has_terminal) return startProcess(argc, argv);
