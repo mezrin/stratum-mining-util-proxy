@@ -28,13 +28,31 @@ int startProcess(int argc, char *argv[]) {
     cmd_line_parser.setApplicationDescription("stratumproxy");
     cmd_line_parser.addHelpOption();
 
+    QCommandLineOption port_option(
+        QStringList() << "p" << "server-port",
+            QCoreApplication::translate("main"
+                , "Number of network port, default 3400"),
+            QCoreApplication::translate("main", "port"));
+
+    QCommandLineOption checking_interval_option(
+        QStringList() << "c" << "checking-interval",
+            QCoreApplication::translate("main"
+                , "Config file checking interval, default 1"),
+            QCoreApplication::translate("main", "minutes"));
+
     QCommandLineOption terminal_option(
         QStringList() << "t" << "terminal",
             QCoreApplication::translate("main"
                 , "Start application in interactive mode."));
 
+    cmd_line_parser.addOption(port_option);
+    cmd_line_parser.addOption(checking_interval_option);
     cmd_line_parser.addOption(terminal_option);
     cmd_line_parser.process(app);
+
+    daemon.setServerPort(cmd_line_parser.value(port_option).toInt());
+    daemon.setConfigReaderInterval(
+        cmd_line_parser.value(checking_interval_option).toInt());
 
     QMetaObject::invokeMethod(&daemon, "onListen", Qt::QueuedConnection);
 
