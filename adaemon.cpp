@@ -165,11 +165,16 @@ void ADaemon::onLoadConfiguration() {
             QString host = line.section(':', 0, 0);
             QString port = line.section(':', 1, 1);
             if(!host.isEmpty() && !port.isEmpty()) {
-                _pool_host = host;
-
                 bool ok = false;
                 int p = port.toInt(&ok);
-                if(ok) _pool_port = p;
+                if(ok) {
+                    if(_pool_host != host || _pool_port != p) {
+                        _pool_host = host; _pool_port = p;
+
+                        QMetaObject::invokeMethod(this, "onListen"
+                            , Qt::QueuedConnection);
+                    }
+                }
 
                 break;
             }
