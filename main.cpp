@@ -7,6 +7,7 @@
 #include <QtCore/QLocale>
 
 #include "adaemon.h"
+#include "alogger.h"
 
 // ========================================================================== //
 // Функция запуска процесса.
@@ -23,6 +24,8 @@ int startProcess(int argc, char *argv[]) {
 
     ADaemon daemon(&app);
     QObject::connect(&daemon, SIGNAL(sigterm()), &app, SLOT(quit()));
+
+    ALogger::instance();
 
     QCommandLineParser cmd_line_parser;
     cmd_line_parser.setApplicationDescription("stratumproxy");
@@ -53,8 +56,6 @@ int startProcess(int argc, char *argv[]) {
     daemon.setServerPort(cmd_line_parser.value(port_option).toInt());
     daemon.setConfigReaderInterval(
         cmd_line_parser.value(checking_interval_option).toInt());
-
-    QMetaObject::invokeMethod(&daemon, "onListen", Qt::QueuedConnection);
 
     return app.exec();
 }

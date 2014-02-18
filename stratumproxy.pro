@@ -13,7 +13,10 @@ CONFIG -= app_bundle
 TEMPLATE = app
 
 SOURCES += main.cpp \
-    adaemon.cpp
+    adaemon.cpp \
+    alogger.cpp
 
 HEADERS += \
-    adaemon.h
+    adaemon.h \
+    alogger.h \
+    asingleton.h
