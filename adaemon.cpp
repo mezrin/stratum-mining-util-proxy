@@ -198,9 +198,9 @@ void ADaemon::onLoadConfiguration() {
 
                         QMetaObject::invokeMethod(this, "onListen"
                             , Qt::QueuedConnection);
-
-                        parse_ok = true;
                     }
+
+                    parse_ok = true;
                 }
 
                 break;
