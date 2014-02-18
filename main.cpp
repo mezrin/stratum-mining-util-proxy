@@ -25,8 +25,6 @@ int startProcess(int argc, char *argv[]) {
     ADaemon daemon(&app);
     QObject::connect(&daemon, SIGNAL(sigterm()), &app, SLOT(quit()));
 
-    ALogger::instance();
-
     QCommandLineParser cmd_line_parser;
     cmd_line_parser.setApplicationDescription("stratumproxy");
     cmd_line_parser.addHelpOption();
@@ -38,24 +36,40 @@ int startProcess(int argc, char *argv[]) {
             QCoreApplication::translate("main", "port"));
 
     QCommandLineOption checking_interval_option(
-        QStringList() << "c" << "checking-interval",
-            QCoreApplication::translate("main"
+        QStringList() << "c" << "checking-interval"
+            , QCoreApplication::translate("main"
                 , "Config file checking interval, default 1"),
             QCoreApplication::translate("main", "minutes"));
 
     QCommandLineOption terminal_option(
-        QStringList() << "t" << "terminal",
-            QCoreApplication::translate("main"
+        QStringList() << "t" << "terminal"
+            , QCoreApplication::translate("main"
                 , "Start application in interactive mode."));
+
+    QCommandLineOption working_dir_option(
+        QStringList() << "w" << "working-dir"
+            , QCoreApplication::translate("main"
+                , "Set working directory into <dir>.")
+            , QCoreApplication::translate("main", "dir"));
 
     cmd_line_parser.addOption(port_option);
     cmd_line_parser.addOption(checking_interval_option);
     cmd_line_parser.addOption(terminal_option);
+    cmd_line_parser.addOption(working_dir_option);
     cmd_line_parser.process(app);
 
     daemon.setServerPort(cmd_line_parser.value(port_option).toInt());
     daemon.setConfigReaderInterval(
         cmd_line_parser.value(checking_interval_option).toInt());
+
+    ALogger::instance().setHasTerminalLog(
+        cmd_line_parser.isSet(terminal_option));
+
+    QString working_dir = cmd_line_parser.value(working_dir_option);
+    if(working_dir.isEmpty())
+        working_dir = QCoreApplication::applicationDirPath();
+
+    ALogger::instance().setFileName(working_dir + "/stratumproxy.log");
 
     return app.exec();
 }

@@ -1,6 +1,7 @@
 #include <QtCore/QCoreApplication>
 #include <QtCore/QTextStream>
 #include <QtCore/QDateTime>
+#include <QtCore/QDebug>
 #include <QtCore/QFile>
 
 #include "alogger.h"
@@ -14,7 +15,7 @@ void ALogger::info(const char *msg) {
             .arg(QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss"))
             .arg("INFO").arg(msg);
 
-    emit sigInfo(txt); save(txt);
+    emit sigInfo(txt); save(txt); if(_has_terminal_log) qDebug() << txt;
 }
 
 
@@ -27,7 +28,7 @@ void ALogger::warn(const char *msg) {
             .arg(QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss"))
             .arg("WARN").arg(msg);
 
-    emit sigWarn(txt); save(txt);
+    emit sigWarn(txt); save(txt); if(_has_terminal_log) qDebug() << txt;
 }
 
 
@@ -40,17 +41,15 @@ void ALogger::crit(const char *msg) {
             .arg(QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss"))
             .arg("CRIT").arg(msg);
 
-    emit sigCrit(txt); save(txt);
+    emit sigCrit(txt); save(txt); if(_has_terminal_log) qDebug() << txt;
 }
 
 
 // ========================================================================== //
-// Конструктор.
+// Функция установки флага вывода сообщений на консоль.
 // ========================================================================== //
-ALogger::ALogger(QObject *parent) : QObject(parent) {
-    _fname
-        = QCoreApplication::applicationDirPath()
-            + QCoreApplication::applicationName() + ".log";
+void ALogger::setHasTerminalLog(bool has_terminal_log) {
+    _has_terminal_log = has_terminal_log;
 }
 
 
@@ -58,6 +57,16 @@ ALogger::ALogger(QObject *parent) : QObject(parent) {
 // Функция установки файла логирования.
 // ========================================================================== //
 void ALogger::setFileName(const QString &fname) {_fname = fname;}
+
+
+// ========================================================================== //
+// Конструктор.
+// ========================================================================== //
+ALogger::ALogger(QObject *parent) : QObject(parent), _has_terminal_log(false) {
+    _fname
+        = QCoreApplication::applicationDirPath()
+            + QCoreApplication::applicationName() + ".log";
+}
 
 
 // ========================================================================== //

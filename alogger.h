@@ -27,6 +27,9 @@ class ALogger : public QObject, public ASingleton<ALogger> {
         //! Функция установки ошибки.
         void crit(const char *msg);
 
+        //! Функция установки флага вывода сообщений на консоль.
+        void setHasTerminalLog(bool has_terminal_log);
+
         //! Функция установки файла логирования.
         void setFileName(const QString &fname);
 
@@ -38,6 +41,8 @@ class ALogger : public QObject, public ASingleton<ALogger> {
         virtual ~ALogger() {}
 
     private:
+        bool _has_terminal_log;
+
         QString _fname;
 
         //! Функция сохранения сообщения в файл.
