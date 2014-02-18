@@ -69,6 +69,8 @@ int startProcess(int argc, char *argv[]) {
     if(working_dir.isEmpty())
         working_dir = QCoreApplication::applicationDirPath();
 
+    daemon.setWorkingDirectory(working_dir);
+
     ALogger::instance().setFileName(working_dir + "/stratumproxy.log");
 
     return app.exec();

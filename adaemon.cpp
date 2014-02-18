@@ -5,10 +5,12 @@
 #include <QtCore/QCoreApplication>
 #include <QtCore/QTimer>
 #include <QtCore/QFile>
+#include <QtCore/QDir>
 
 #include <QtNetwork/QTcpServer>
 
 #include "adaemon.h"
+#include "alogger.h"
 
 static int _g_sig_hup_fd[2], _g_sig_term_fd[2];
 
@@ -38,7 +40,8 @@ void ADaemon::sigTermHandler(int) {
 ADaemon::ADaemon(QObject *parent)
     : QObject(parent), _sig_hup_socket_notifier(NULL)
     , _sig_term_socket_notifier(NULL), _server_port(3400)
-    , _pool_host("localhost"), _pool_port(3337) {
+    , _pool_host("localhost"), _pool_port(3337)
+    , _working_dir(QCoreApplication::applicationDirPath()) {
 
     struct sigaction hup;
     hup.sa_handler = ADaemon::sigHupHandler;
@@ -73,6 +76,8 @@ ADaemon::ADaemon(QObject *parent)
             , this, SLOT(onSigTermHandle()));
     }
 
+    onLoadConfiguration();
+
     _config_timer = new QTimer(this);
     _config_timer->setInterval(60000);
     _config_timer->setSingleShot(false);
@@ -84,7 +89,6 @@ ADaemon::ADaemon(QObject *parent)
 
     _server = new QTcpServer(this);
     _server->setMaxPendingConnections(100);
-
     connect(_server, SIGNAL(newConnection())
         , this, SLOT(onServerNewConnection()));
 }
@@ -107,13 +111,32 @@ void ADaemon::setServerPort(int port) {
 
 
 // ========================================================================== //
+// Функция установки рабочей директории.
+// ========================================================================== //
+void ADaemon::setWorkingDirectory(const QString &working_dir) {
+    QDir dir(working_dir);
+    if(dir.exists()) _working_dir = working_dir;
+}
+
+
+// ========================================================================== //
 // Слот активации сервера.
 // ========================================================================== //
 void ADaemon::onListen() {
-    if(_server->isListening()) {_server->close(); _pool_data_list.clear();}
+    if(_server->isListening()) {
+        _server->close(); _server->deleteLater(); _pool_data_list.clear();
+
+        _server = new QTcpServer(this);
+        _server->setMaxPendingConnections(100);
+        connect(_server, SIGNAL(newConnection())
+            , this, SLOT(onServerNewConnection()));
+    }
 
     if(!_server->listen(QHostAddress::Any, _server_port))
-        qFatal("Server is not listen!");
+        logCrit("Server is not listen!");
+
+    logInfo(QString("Server is listen. Pool %1:%2")
+        .arg(_pool_host).arg(_pool_port));
 }
 
 
@@ -153,10 +176,12 @@ void ADaemon::onSigTermHandle() {
 // Слот загрузки конфигурационного файла.
 // ========================================================================== //
 void ADaemon::onLoadConfiguration() {
-    QFile file(QCoreApplication::applicationDirPath() + "/stratumproxy.cfg");
+    QFile file(_working_dir + "/stratumproxy.cfg");
     if(!file.open(QFile::ReadOnly)) return;
 
     QTextStream stream(&file);
+
+    bool parse_ok = false;
 
     QString line;
     do {
@@ -173,6 +198,8 @@ void ADaemon::onLoadConfiguration() {
 
                         QMetaObject::invokeMethod(this, "onListen"
                             , Qt::QueuedConnection);
+
+                        parse_ok = true;
                     }
                 }
 
@@ -183,6 +210,8 @@ void ADaemon::onLoadConfiguration() {
     } while(!line.isEmpty());
 
     file.close();
+
+    if(!parse_ok) logWarn("Read configuration file problem!");
 }
 
 
@@ -207,7 +236,7 @@ void ADaemon::onServerNewConnection() {
     connect(pool_socket, SIGNAL(readyRead())
         , this, SLOT(onPoolSocketReadyRead()));
     connect(pool_socket, SIGNAL(error(QAbstractSocket::SocketError))
-        , this, SLOT(onPoolSocketError()), Qt::QueuedConnection);
+        , this, SLOT(onPoolSocketError()));
 
     pool_socket->connectToHost(_pool_host, _pool_port);
 
@@ -262,7 +291,7 @@ void ADaemon::onMinerSocketDisconnected() {
 // ========================================================================== //
 void ADaemon::onPoolSocketConnected() {
     QTcpSocket *pool_socket = qobject_cast<QTcpSocket*>(sender());
-    if(!pool_socket || _pool_data_list.isEmpty()) return;
+    if(!pool_socket) return;
 
     QMutableListIterator<QPair<QTcpSocket*,QByteArray> > iter(_pool_data_list);
     while(iter.hasNext()) {
@@ -297,5 +326,8 @@ void ADaemon::onPoolSocketReadyRead() {
 // ========================================================================== //
 void ADaemon::onPoolSocketError() {
     QTcpSocket *pool_socket = qobject_cast<QTcpSocket*>(sender());
-    if(pool_socket) pool_socket->connectToHost(_pool_host, _pool_port);
+    if(pool_socket) {
+        pool_socket->abort();
+        pool_socket->connectToHost(_pool_host, _pool_port);
+    }
 }

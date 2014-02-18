@@ -35,6 +35,9 @@ class ADaemon : public QObject {
         //! Функция установки порта сервера.
         void setServerPort(int port);
 
+        //! Функция установки рабочей директории.
+        void setWorkingDirectory(const QString &working_dir);
+
     public slots:
         //! Слот активации сервера.
         void onListen();
@@ -51,6 +54,8 @@ class ADaemon : public QObject {
         QString _pool_host;
 
         int _pool_port;
+
+        QString _working_dir;
 
         QList<QPair<QTcpSocket*,QByteArray> > _pool_data_list;
 
