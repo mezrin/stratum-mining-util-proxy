@@ -5,6 +5,7 @@
 #include <QtCore/QCoreApplication>
 #include <QtCore/QTextCodec>
 #include <QtCore/QLocale>
+#include <QtCore/QDir>
 
 #include "adaemon.h"
 #include "alogger.h"
@@ -21,9 +22,6 @@ int startProcess(int argc, char *argv[]) {
 
     QLocale::setDefault(QLocale(QLocale::Russian, QLocale::RussianFederation));
     QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
-
-    ADaemon daemon(&app);
-    QObject::connect(&daemon, SIGNAL(sigterm()), &app, SLOT(quit()));
 
     QCommandLineParser cmd_line_parser;
     cmd_line_parser.setApplicationDescription("stratumproxy");
@@ -58,20 +56,26 @@ int startProcess(int argc, char *argv[]) {
     cmd_line_parser.addOption(working_dir_option);
     cmd_line_parser.process(app);
 
+    if(cmd_line_parser.isSet("h") || cmd_line_parser.isSet("help"))
+        return app.exec();
+
+    QString work_path = cmd_line_parser.value(working_dir_option);
+    if(!work_path.isEmpty()) {
+        if(QDir(work_path).exists()) {
+            ALogger::instance().setFileName(work_path + "/stratumproxy.log");
+        }
+    }
+
+    ALogger::instance()
+        .setHasTerminalLog(cmd_line_parser.isSet(terminal_option));
+
+    ADaemon daemon(&app);
+    QObject::connect(&daemon, SIGNAL(sigterm()), &app, SLOT(quit()));
+
     daemon.setServerPort(cmd_line_parser.value(port_option).toInt());
     daemon.setConfigReaderInterval(
         cmd_line_parser.value(checking_interval_option).toInt());
-
-    ALogger::instance().setHasTerminalLog(
-        cmd_line_parser.isSet(terminal_option));
-
-    QString working_dir = cmd_line_parser.value(working_dir_option);
-    if(working_dir.isEmpty())
-        working_dir = QCoreApplication::applicationDirPath();
-
-    daemon.setWorkingDirectory(working_dir);
-
-    ALogger::instance().setFileName(working_dir + "/stratumproxy.log");
+    daemon.setWorkingDirectory(work_path);
 
     return app.exec();
 }

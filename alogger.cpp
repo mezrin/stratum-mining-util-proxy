@@ -64,7 +64,7 @@ void ALogger::setFileName(const QString &fname) {_fname = fname;}
 // ========================================================================== //
 ALogger::ALogger(QObject *parent) : QObject(parent), _has_terminal_log(false) {
     _fname
-        = QCoreApplication::applicationDirPath()
+        = QCoreApplication::applicationDirPath() + "/"
             + QCoreApplication::applicationName() + ".log";
 }
 
@@ -74,6 +74,32 @@ ALogger::ALogger(QObject *parent) : QObject(parent), _has_terminal_log(false) {
 // ========================================================================== //
 void ALogger::save(const QString &msg) {
     QFile file(_fname);
+    if(file.exists() && file.size() >= (1024*1024*10)) {
+        int i = 3;
+        while(i) {
+            const QString new_fname = _fname + "." + QString::number(i+1);
+            if(QFile::exists(new_fname)) {
+                QFile f(new_fname); if(!f.remove()) break;
+            }
+
+            const QString old_fname = _fname + "." + QString::number(i);
+            if(QFile::exists(old_fname)) {
+                if(!QFile::rename(old_fname, new_fname)) break;
+            }
+
+            --i;
+        }
+
+        bool ok = true;
+
+        const QString new_fname = _fname + ".1";
+        if(QFile::exists(new_fname)) {
+            QFile f(new_fname); if(!f.remove()) ok = false;
+        }
+
+        if(ok) QFile::rename(_fname, new_fname);
+    }
+
     if(file.open(QFile::WriteOnly|QFile::Append|QFile::Text)) {
         QTextStream stream(&file);
         stream << msg << endl;

@@ -20,3 +20,6 @@ HEADERS += \
     adaemon.h \
     alogger.h \
     asingleton.h
+
+OTHER_FILES += \
+    README.md
