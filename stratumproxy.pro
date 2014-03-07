@@ -14,12 +14,20 @@ TEMPLATE = app
 
 SOURCES += main.cpp \
     adaemon.cpp \
-    alogger.cpp
+    alogger.cpp \
+    aunixsignalhandler.cpp \
+    aproxymachine.cpp \
+    aconfighandler.cpp \
+    apoolmonitor.cpp
 
 HEADERS += \
     adaemon.h \
     alogger.h \
-    asingleton.h
+    asingleton.h \
+    aunixsignalhandler.h \
+    aproxymachine.h \
+    aconfighandler.h \
+    apoolmonitor.h
 
 OTHER_FILES += \
     README.md
