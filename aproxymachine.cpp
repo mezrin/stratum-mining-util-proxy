@@ -92,11 +92,13 @@ void AProxyMachine::start() {
     pid_file.write(QByteArray::number(qApp->applicationPid()));
     pid_file.close();
 
+    logInfo("proxy started");
+
     _config_handler->setFileName(
         QString("%1/stratumproxy.ini").arg(_work_path));
     _config_handler->start();
 
-    _active = true; logInfo("proxy started");
+    _active = true;
 }
 
 
