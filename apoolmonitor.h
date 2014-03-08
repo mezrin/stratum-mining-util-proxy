@@ -3,7 +3,7 @@
 
 #include <QtCore/QObject>
 
-class QTcpSocket;
+class APoolChecker;
 class QTimer;
 
 class APoolMonitor : public QObject {
@@ -20,49 +20,36 @@ class APoolMonitor : public QObject {
         //! Деструктор.
         virtual ~APoolMonitor() {}
 
-        //! Функция возврата флага активности монитора.
-        inline bool isActive() const {return _active;}
+        //! Функция возврата флага изменения пула.
+        inline bool hasPoolChanged() const {return _has_pool_changed;}
 
-        //! Функция установки хоста.
-        void setHost(const QString &host);
+        //! Функция возврата хоста.
+        inline QString host() const {return _host;}
 
-        //! Функция установки хоста.
-        void setHost(const QString &host, int port);
-
-        //! Функция установки порта.
-        void setPort(int port);
+        //! Функция возврата порта.
+        inline int port() const {return _port;}
 
     public slots:
-        //! Слот активации мониторинга.
-        void start();
+        //! Слот установки пула на мониторинг.
+        void changePool(const QString &pool);
 
         //! Слот деактивации мониторинга.
         void stop();
 
     private:
-        enum State {STATE_RDY_WRITE, STATE_RDY_READ};
-
-        State _state;
-
-        bool _active;
+        bool _has_pool_changed;
 
         QString _host;
 
         int _port;
 
-        QTimer *_timer;
+        APoolChecker *_pool_checker;
 
-        QTcpSocket *_socket;
+        QTimer *_timer;
 
     private slots:
         //! Слот активации таймера.
         void onTimerTimeout();
-
-        //! Слот приёма сетевых сообщений.
-        void onSocketReadyRead();
-
-        //! Слот обработки ошибок сетевой передачи данных.
-        void onSocketError();
 
 };
 

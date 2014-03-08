@@ -7,7 +7,7 @@
 #include <QtCore/QLocale>
 #include <QtCore/QDir>
 
-#include "adaemon.h"
+#include "aproxymachine.h"
 #include "alogger.h"
 
 // ========================================================================== //
@@ -27,55 +27,74 @@ int startProcess(int argc, char *argv[]) {
     cmd_line_parser.setApplicationDescription("stratumproxy");
     cmd_line_parser.addHelpOption();
 
-    QCommandLineOption port_option(
+    QCommandLineOption server_port_option(
         QStringList() << "p" << "server-port",
             QCoreApplication::translate("main"
                 , "Number of network port, default 3400"),
             QCoreApplication::translate("main", "port"));
 
-    QCommandLineOption checking_interval_option(
-        QStringList() << "c" << "checking-interval"
+    QCommandLineOption config_interval_option(
+        QStringList() << "c" << "config-interval"
             , QCoreApplication::translate("main"
-                , "Config file checking interval, default 1"),
-            QCoreApplication::translate("main", "minutes"));
+                , "Config file checking interval, default 60"),
+            QCoreApplication::translate("main", "seconds"));
+
+    QCommandLineOption pool_interval_option(
+        QStringList() << "s" << "pool-interval"
+            , QCoreApplication::translate("main"
+                , "Pool checking interval, default 5"),
+            QCoreApplication::translate("main", "seconds"));
 
     QCommandLineOption terminal_option(
         QStringList() << "t" << "terminal"
             , QCoreApplication::translate("main"
                 , "Start application in interactive mode."));
 
-    QCommandLineOption working_dir_option(
-        QStringList() << "w" << "working-dir"
+    QCommandLineOption work_path_option(
+        QStringList() << "w" << "work-path"
             , QCoreApplication::translate("main"
-                , "Set working directory into <dir>.")
-            , QCoreApplication::translate("main", "dir"));
+                , "Set working path into <path>.")
+            , QCoreApplication::translate("main", "path"));
 
-    cmd_line_parser.addOption(port_option);
-    cmd_line_parser.addOption(checking_interval_option);
+    cmd_line_parser.addOption(server_port_option);
+    cmd_line_parser.addOption(config_interval_option);
+    cmd_line_parser.addOption(pool_interval_option);
     cmd_line_parser.addOption(terminal_option);
-    cmd_line_parser.addOption(working_dir_option);
+    cmd_line_parser.addOption(work_path_option);
     cmd_line_parser.process(app);
 
     if(cmd_line_parser.isSet("h") || cmd_line_parser.isSet("help"))
         return app.exec();
 
-    QString work_path = cmd_line_parser.value(working_dir_option);
-    if(!work_path.isEmpty()) {
-        if(QDir(work_path).exists()) {
-            ALogger::instance().setFileName(work_path + "/stratumproxy.log");
-        }
+    QString work_path = QCoreApplication::applicationDirPath();
+    if(cmd_line_parser.isSet(work_path_option)) {
+        QString path = cmd_line_parser.value(work_path_option);
+        if(QDir(path).exists()) work_path = path;
     }
 
+    ALogger::instance().setFileName(work_path + "/stratumproxy.log");
     ALogger::instance()
         .setHasTerminalLog(cmd_line_parser.isSet(terminal_option));
 
-    ADaemon daemon(&app);
-    QObject::connect(&daemon, SIGNAL(sigterm()), &app, SLOT(quit()));
+    AProxyMachine proxy_machine(&app);
+    proxy_machine.setWorkPath(work_path);
 
-    daemon.setServerPort(cmd_line_parser.value(port_option).toInt());
-    daemon.setConfigReaderInterval(
-        cmd_line_parser.value(checking_interval_option).toInt());
-    daemon.setWorkingDirectory(work_path);
+    if(cmd_line_parser.isSet(server_port_option)) {
+        app.setProperty("server-port"
+            , cmd_line_parser.value(server_port_option).toInt());
+    }
+
+    if(cmd_line_parser.isSet(config_interval_option)) {
+        app.setProperty("config-interval"
+            , cmd_line_parser.value(config_interval_option).toInt());
+    }
+
+    if(cmd_line_parser.isSet(pool_interval_option)) {
+        app.setProperty("pool-interval"
+            , cmd_line_parser.value(pool_interval_option).toInt());
+    }
+
+    QMetaObject::invokeMethod(&proxy_machine, "start", Qt::QueuedConnection);
 
     return app.exec();
 }

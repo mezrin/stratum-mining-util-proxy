@@ -9,7 +9,7 @@ class AConfigHandler : public QObject {
     Q_OBJECT
 
     signals:
-        void poolChanged();
+        void poolChanged(const QString &pool);
 
     public:
         //! Конструктор.

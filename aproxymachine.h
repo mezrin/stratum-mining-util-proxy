@@ -2,8 +2,13 @@
 #define APROXYMACHINE_H
 
 #include <QtCore/QObject>
+#include <QtCore/QPair>
+
+class QTcpServer;
+class QTcpSocket;
 
 class AConfigHandler;
+class APoolMonitor;
 
 class AProxyMachine : public QObject {
     Q_OBJECT
@@ -36,7 +41,41 @@ class AProxyMachine : public QObject {
 
         AConfigHandler *_config_handler;
 
+        APoolMonitor *_pool_monitor;
+
+        QTcpServer *_server;
+
         QString _work_path;
+
+        QList<QPair<QTcpSocket*,QByteArray> > _pool_data_list;
+
+    private slots:
+        //! Слот реакции на подключение пула.
+        void onPoolMonitorSucceed();
+
+        //! Слот реакции на отключение пула.
+        void onPoolMonitorFailed();
+
+        //! Слот открытия нового соединения с сервером.
+        void onServerNewConnection();
+
+        //! Слот приёма сетевых сообщений от майнеров.
+        void onMinerSocketReadyRead();
+
+        //! Слот закрытия сетевых соединений с майнером и пулом.
+        void onMinerSocketDisconnected();
+
+        //! Слот обработки ошибок сетевой передачи данных майнера.
+        void onMinerSocketError();
+
+        //! Слот подключения пула.
+        void onPoolSocketConnected();
+
+        //! Слот приёма сетевых сообщений от пула.
+        void onPoolSocketReadyRead();
+
+        //! Слот обработки ошибок сетевой передачи данных пула.
+        void onPoolSocketError();
 
 };
 

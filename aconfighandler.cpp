@@ -151,7 +151,7 @@ void AConfigHandler::onTimerTimeout() {
         if(pool_var.isValid()) {
             QString pool = pool_var.toString();
             if(!pool.isEmpty()) {
-                if(_pool != pool) {_pool = pool; emit poolChanged();}
+                if(_pool != pool) {_pool = pool; emit poolChanged(_pool);}
 
                 break;
             }

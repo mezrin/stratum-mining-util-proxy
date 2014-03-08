@@ -18,7 +18,8 @@ SOURCES += main.cpp \
     aunixsignalhandler.cpp \
     aproxymachine.cpp \
     aconfighandler.cpp \
-    apoolmonitor.cpp
+    apoolmonitor.cpp \
+    apoolchecker.cpp
 
 HEADERS += \
     adaemon.h \
@@ -27,7 +28,8 @@ HEADERS += \
     aunixsignalhandler.h \
     aproxymachine.h \
     aconfighandler.h \
-    apoolmonitor.h
+    apoolmonitor.h \
+    apoolchecker.h
 
 OTHER_FILES += \
     README.md
