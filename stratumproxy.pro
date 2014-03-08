@@ -13,7 +13,6 @@ CONFIG -= app_bundle
 TEMPLATE = app
 
 SOURCES += main.cpp \
-    adaemon.cpp \
     alogger.cpp \
     aunixsignalhandler.cpp \
     aproxymachine.cpp \
@@ -22,7 +21,6 @@ SOURCES += main.cpp \
     apoolchecker.cpp
 
 HEADERS += \
-    adaemon.h \
     alogger.h \
     asingleton.h \
     aunixsignalhandler.h \
