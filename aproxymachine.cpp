@@ -8,6 +8,8 @@
 
 #include "aproxymachine.h"
 #include "aunixsignalhandler.h"
+#include "abackuppoolhandler.h"
+#include "amainpoolhandler.h"
 #include "aconfighandler.h"
 #include "apoolmonitor.h"
 #include "alogger.h"
@@ -16,18 +18,45 @@
 // Конструктор.
 // ========================================================================== //
 AProxyMachine::AProxyMachine(QObject *parent)
-    : QObject(parent), _active(false), _config_handler(new AConfigHandler(this))
-    , _pool_monitor(new APoolMonitor(this)), _server(NULL)
+    : QObject(parent), _active(false), _has_main_pool(true)
+    , _config_handler(new AConfigHandler(this))
+    , _main_pool_handler(new AMainPoolHandler(this))
+    , _backup_pool_handler(new ABackupPoolHandler(this))
+    , _main_pool_monitor(new APoolMonitor(this))
+    , _backup_pool_monitor(new APoolMonitor(this)), _server(NULL)
     , _work_path(QCoreApplication::applicationDirPath()) {
 
-    connect(_config_handler, SIGNAL(poolChanged(const QString&))
-        , _pool_monitor, SLOT(changePool(const QString&)));
+    connect(_main_pool_handler, SIGNAL(poolChanged(const QString&))
+        , this, SLOT(serverStop()));
 
-    connect(_pool_monitor, SIGNAL(succeed())
-        , this, SLOT(onPoolMonitorSucceed()));
+    connect(_main_pool_handler, SIGNAL(poolChanged(const QString&))
+        , _backup_pool_monitor, SLOT(stop()));
+    connect(_main_pool_handler, SIGNAL(poolChanged(const QString&))
+        , _backup_pool_handler, SLOT(stop()));
 
-    connect(_pool_monitor, SIGNAL(failed()), this, SLOT(onPoolMonitorFailed()));
-    connect(_pool_monitor, SIGNAL(failed()), _config_handler, SLOT(nextPool()));
+    connect(_main_pool_handler, SIGNAL(poolChanged(const QString&))
+        , _main_pool_monitor, SLOT(stop()));
+    connect(_main_pool_handler, SIGNAL(poolChanged(const QString&))
+        , _main_pool_monitor, SLOT(changePool(const QString&)));
+    connect(_main_pool_handler, SIGNAL(checkingIntervalChanged(int))
+        , _main_pool_monitor, SLOT(changeCheckingInterval(int)));
+
+    connect(_main_pool_monitor, SIGNAL(succeed())
+        , this, SLOT(onMainPoolSucceed()));
+    connect(_main_pool_monitor, SIGNAL(failed())
+        , this, SLOT(onMainPoolFailed()));
+
+    connect(_backup_pool_handler, SIGNAL(poolChanged(const QString&))
+        , _backup_pool_monitor, SLOT(stop()));
+    connect(_backup_pool_handler, SIGNAL(poolChanged(const QString&))
+        , _backup_pool_monitor, SLOT(changePool(const QString&)));
+    connect(_backup_pool_handler, SIGNAL(checkingIntervalChanged(int))
+        , _backup_pool_monitor, SLOT(changeCheckingInterval(int)));
+
+    connect(_backup_pool_monitor, SIGNAL(succeed())
+        , this, SLOT(onBackupPoolSucceed()));
+    connect(_backup_pool_monitor, SIGNAL(failed())
+        , this, SLOT(onBackupPoolFailed()));
 
     AUnixSignalHandler *unix_sig_handler = new AUnixSignalHandler(this);
     connect(unix_sig_handler, SIGNAL(sigterm()), this, SLOT(stop()));
@@ -92,11 +121,15 @@ void AProxyMachine::start() {
     pid_file.write(QByteArray::number(qApp->applicationPid()));
     pid_file.close();
 
-    logInfo("proxy started");
+    logInfo("proxy machine started");
 
-    _config_handler->setFileName(
-        QString("%1/stratumproxy.ini").arg(_work_path));
-    _config_handler->start();
+    const QString fname = QString("%1/stratumproxy.ini").arg(_work_path);
+
+    _config_handler->setFileName(fname);
+    _main_pool_handler->setFileName(fname);
+    _backup_pool_handler->setFileName(fname);
+
+    _main_pool_handler->start();
 
     _active = true;
 }
@@ -106,40 +139,41 @@ void AProxyMachine::start() {
 // Слот деактивации машины.
 // ========================================================================== //
 void AProxyMachine::stop() {
-    _pool_monitor->stop(); _config_handler->stop(); onPoolMonitorFailed();
+    _backup_pool_monitor->stop(); _backup_pool_handler->stop();
+
+    _main_pool_monitor->stop(); _main_pool_handler->stop();
+
+    serverStop();
 
     QFile pid_file(QString("%1/stratumproxy.pid").arg(_work_path));
     if(pid_file.exists()) pid_file.remove();
 
-    _active = false; logInfo("proxy stopped");
+    _active = false; logInfo("proxy machine stopped");
 }
 
 
 // ========================================================================== //
-// Слот реакции на подключение пула.
+// Слот активации сервера.
 // ========================================================================== //
-void AProxyMachine::onPoolMonitorSucceed() {
-    if(_pool_monitor->hasPoolChanged()) {
-        if(_server) onPoolMonitorFailed();
+void AProxyMachine::serverStart() {
+    if(_server) serverStop();
 
-        _server = new QTcpServer(this);
+    _server = new QTcpServer(this);
+    connect(_server, SIGNAL(newConnection())
+        , this, SLOT(onServerNewConnection()));
 
-        connect(_server, SIGNAL(newConnection())
-            , this, SLOT(onServerNewConnection()));
+    if(!_server->listen(QHostAddress::Any
+        , qApp->property("server-port").toInt()))
+        logCrit("server is not listen!");
 
-        if(!_server->listen(QHostAddress::Any
-            , qApp->property("server-port").toInt()))
-            logCrit("server is not listen!");
-
-        logInfo("server is listen");
-    }
+    logInfo("server is listen");
 }
 
 
 // ========================================================================== //
-// Слот реакции на отключение пула.
+// Слот деактивации сервера.
 // ========================================================================== //
-void AProxyMachine::onPoolMonitorFailed() {
+void AProxyMachine::serverStop() {
     _pool_data_list.clear();
 
     if(_server) {
@@ -149,6 +183,58 @@ void AProxyMachine::onPoolMonitorFailed() {
 
         logInfo("server closed");
     }
+}
+
+
+// ========================================================================== //
+// Слот подключения главного пула.
+// ========================================================================== //
+void AProxyMachine::onMainPoolSucceed() {
+    if(!_has_main_pool) {
+        _has_main_pool = true; serverStop();
+
+        _backup_pool_monitor->stop(); _backup_pool_handler->stop();
+
+        serverStart(); return;
+    }
+
+    if(_main_pool_monitor->hasPoolChanged()) serverStart();
+}
+
+
+// ========================================================================== //
+// Слот отключения главного пула.
+// ========================================================================== //
+void AProxyMachine::onMainPoolFailed() {
+    if(!_has_main_pool) return;
+
+    _has_main_pool = false; serverStop(); _backup_pool_handler->start();
+}
+
+
+// ========================================================================== //
+// Слот подключения бэкап пула.
+// ========================================================================== //
+void AProxyMachine::onBackupPoolSucceed() {
+    if(_has_main_pool) {
+        _backup_pool_monitor->stop(); _backup_pool_handler->stop(); return;
+    }
+
+    if(_backup_pool_monitor->hasPoolChanged()) serverStart();
+}
+
+
+// ========================================================================== //
+// Слот отключения бэкап пула.
+// ========================================================================== //
+void AProxyMachine::onBackupPoolFailed() {
+    if(_has_main_pool) {
+        _backup_pool_monitor->stop(); _backup_pool_handler->stop(); return;
+    }
+
+    serverStop();
+
+    _backup_pool_monitor->stop(); _backup_pool_handler->nextPool();
 }
 
 
@@ -179,7 +265,16 @@ void AProxyMachine::onServerNewConnection() {
     connect(pool_socket, SIGNAL(error(QAbstractSocket::SocketError))
         , this, SLOT(onPoolSocketError()));
 
-    pool_socket->connectToHost(_pool_monitor->host(), _pool_monitor->port());
+    switch(_has_main_pool) {
+        case true:
+            pool_socket->connectToHost(_main_pool_monitor->host()
+                , _main_pool_monitor->port());
+        break;
+        case false:
+            pool_socket->connectToHost(_backup_pool_monitor->host()
+                , _backup_pool_monitor->port());
+        break;
+    }
 
     miner_socket->setProperty("pool_socket"
         , QVariant::fromValue((QObject*)pool_socket));

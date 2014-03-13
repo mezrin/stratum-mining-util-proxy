@@ -27,24 +27,6 @@ int startProcess(int argc, char *argv[]) {
     cmd_line_parser.setApplicationDescription("stratumproxy");
     cmd_line_parser.addHelpOption();
 
-    QCommandLineOption server_port_option(
-        QStringList() << "p" << "server-port",
-            QCoreApplication::translate("main"
-                , "Number of network port, default 3400"),
-            QCoreApplication::translate("main", "port"));
-
-    QCommandLineOption config_interval_option(
-        QStringList() << "c" << "config-interval"
-            , QCoreApplication::translate("main"
-                , "Config file checking interval, default 60"),
-            QCoreApplication::translate("main", "seconds"));
-
-    QCommandLineOption pool_interval_option(
-        QStringList() << "s" << "pool-interval"
-            , QCoreApplication::translate("main"
-                , "Pool checking interval, default 5"),
-            QCoreApplication::translate("main", "seconds"));
-
     QCommandLineOption terminal_option(
         QStringList() << "t" << "terminal"
             , QCoreApplication::translate("main"
@@ -56,9 +38,6 @@ int startProcess(int argc, char *argv[]) {
                 , "Set working path into <path>.")
             , QCoreApplication::translate("main", "path"));
 
-    cmd_line_parser.addOption(server_port_option);
-    cmd_line_parser.addOption(config_interval_option);
-    cmd_line_parser.addOption(pool_interval_option);
     cmd_line_parser.addOption(terminal_option);
     cmd_line_parser.addOption(work_path_option);
     cmd_line_parser.process(app);
@@ -78,21 +57,6 @@ int startProcess(int argc, char *argv[]) {
 
     AProxyMachine proxy_machine(&app);
     proxy_machine.setWorkPath(work_path);
-
-    if(cmd_line_parser.isSet(server_port_option)) {
-        app.setProperty("server-port"
-            , cmd_line_parser.value(server_port_option).toInt());
-    }
-
-    if(cmd_line_parser.isSet(config_interval_option)) {
-        app.setProperty("config-interval"
-            , cmd_line_parser.value(config_interval_option).toInt());
-    }
-
-    if(cmd_line_parser.isSet(pool_interval_option)) {
-        app.setProperty("pool-interval"
-            , cmd_line_parser.value(pool_interval_option).toInt());
-    }
 
     QMetaObject::invokeMethod(&proxy_machine, "start", Qt::QueuedConnection);
 

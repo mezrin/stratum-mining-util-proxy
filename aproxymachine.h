@@ -7,6 +7,8 @@
 class QTcpServer;
 class QTcpSocket;
 
+class ABackupPoolHandler;
+class AMainPoolHandler;
 class AConfigHandler;
 class APoolMonitor;
 
@@ -37,11 +39,15 @@ class AProxyMachine : public QObject {
         void stop();
 
     private:
-        bool _active;
+        bool _active, _has_main_pool;
 
         AConfigHandler *_config_handler;
 
-        APoolMonitor *_pool_monitor;
+        AMainPoolHandler *_main_pool_handler;
+
+        ABackupPoolHandler *_backup_pool_handler;
+
+        APoolMonitor *_main_pool_monitor, *_backup_pool_monitor;
 
         QTcpServer *_server;
 
@@ -50,11 +56,23 @@ class AProxyMachine : public QObject {
         QList<QPair<QTcpSocket*,QByteArray> > _pool_data_list;
 
     private slots:
-        //! Слот реакции на подключение пула.
-        void onPoolMonitorSucceed();
+        //! Слот активации сервера.
+        void serverStart();
 
-        //! Слот реакции на отключение пула.
-        void onPoolMonitorFailed();
+        //! Слот деактивации сервера.
+        void serverStop();
+
+        //! Слот подключения главного пула.
+        void onMainPoolSucceed();
+
+        //! Слот отключения главного пула.
+        void onMainPoolFailed();
+
+        //! Слот подключения бэкап пула.
+        void onBackupPoolSucceed();
+
+        //! Слот отключения бэкап пула.
+        void onBackupPoolFailed();
 
         //! Слот открытия нового соединения с сервером.
         void onServerNewConnection();

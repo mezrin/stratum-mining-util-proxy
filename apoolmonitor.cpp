@@ -13,13 +13,10 @@ APoolMonitor::APoolMonitor(QObject *parent)
     , _pool_checker(new APoolChecker(this)), _timer(new QTimer(this)) {
 
     connect(_pool_checker, SIGNAL(succeed()), this, SIGNAL(succeed()));
-    connect(_pool_checker, SIGNAL(failed()), this, SLOT(stop()));
     connect(_pool_checker, SIGNAL(failed()), this, SIGNAL(failed()));
 
     _timer->setInterval(5000);
-    _timer->setSingleShot(true);
-
-    connect(_pool_checker, SIGNAL(succeed()), _timer, SLOT(start()));
+    _timer->setSingleShot(false);
     connect(_timer, SIGNAL(timeout()), this, SLOT(onTimerTimeout()));
 }
 
@@ -47,9 +44,23 @@ void APoolMonitor::changePool(const QString &pool) {
 
 
 // ========================================================================== //
+// Слот установки интервала.
+// ========================================================================== //
+void APoolMonitor::changeCheckingInterval(int interval) {
+    _timer->setInterval(interval*1000);
+}
+
+
+// ========================================================================== //
+// Слот активации мониторинга.
+// ========================================================================== //
+void APoolMonitor::start() {_timer->start();}
+
+
+// ========================================================================== //
 // Слот деактивации мониторинга.
 // ========================================================================== //
-void APoolMonitor::stop() {_timer->stop(); _host.clear(); _port = -1;}
+void APoolMonitor::stop() {_timer->stop();}
 
 
 // ========================================================================== //

@@ -3,13 +3,8 @@
 
 #include <QtCore/QObject>
 
-class QTimer;
-
 class AConfigHandler : public QObject {
     Q_OBJECT
-
-    signals:
-        void poolChanged(const QString &pool);
 
     public:
         //! Конструктор.
@@ -24,34 +19,8 @@ class AConfigHandler : public QObject {
         //! Функция установки файла конфигурации по его наименованию.
         void setFileName(const QString &fname);
 
-        //! Функция возврата текущего пула.
-        QString pool() const;
-
-    public slots:
-        //! Слот активации мониторинга файла конфигурации.
-        void start();
-
-        //! Слот деактивации мониторинга файла конфигурации.
-        void stop();
-
-        //! Слот переключения текущего пула.
-        void nextPool();
-
     private:
-        QTimer *_timer;
-
         QString _fname;
-
-        int _pool_index;
-
-        QString _pool;
-
-        //! Функция сброса значений параметров.
-        void reset();
-
-    private slots:
-        //! Слот активации таймера.
-        void onTimerTimeout();
 
 };
 

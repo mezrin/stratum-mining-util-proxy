@@ -33,6 +33,12 @@ class APoolMonitor : public QObject {
         //! Слот установки пула на мониторинг.
         void changePool(const QString &pool);
 
+        //! Слот установки интервала.
+        void changeCheckingInterval(int interval);
+
+        //! Слот активации мониторинга.
+        void start();
+
         //! Слот деактивации мониторинга.
         void stop();
 

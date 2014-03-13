@@ -18,7 +18,9 @@ SOURCES += main.cpp \
     aproxymachine.cpp \
     aconfighandler.cpp \
     apoolmonitor.cpp \
-    apoolchecker.cpp
+    apoolchecker.cpp \
+    amainpoolhandler.cpp \
+    abackuppoolhandler.cpp
 
 HEADERS += \
     alogger.h \
@@ -27,7 +29,9 @@ HEADERS += \
     aproxymachine.h \
     aconfighandler.h \
     apoolmonitor.h \
-    apoolchecker.h
+    apoolchecker.h \
+    amainpoolhandler.h \
+    abackuppoolhandler.h
 
 OTHER_FILES += \
     README.md
