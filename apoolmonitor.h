@@ -36,6 +36,9 @@ class APoolMonitor : public QObject {
         //! Слот установки интервала.
         void changeCheckingInterval(int interval);
 
+        //! Слот установки интервала.
+        void changeCheckingTimeout(int interval);
+
         //! Слот активации мониторинга.
         void start();
 

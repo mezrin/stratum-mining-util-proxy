@@ -40,6 +40,8 @@ AProxyMachine::AProxyMachine(QObject *parent)
         , _main_pool_monitor, SLOT(changePool(const QString&)));
     connect(_main_pool_handler, SIGNAL(checkingIntervalChanged(int))
         , _main_pool_monitor, SLOT(changeCheckingInterval(int)));
+    connect(_main_pool_handler, SIGNAL(checkingTimeoutChanged(int))
+        , _main_pool_monitor, SLOT(changeCheckingTimeout(int)));
 
     connect(_main_pool_monitor, SIGNAL(succeed())
         , this, SLOT(onMainPoolSucceed()));
@@ -52,6 +54,8 @@ AProxyMachine::AProxyMachine(QObject *parent)
         , _backup_pool_monitor, SLOT(changePool(const QString&)));
     connect(_backup_pool_handler, SIGNAL(checkingIntervalChanged(int))
         , _backup_pool_monitor, SLOT(changeCheckingInterval(int)));
+    connect(_backup_pool_handler, SIGNAL(checkingTimeoutChanged(int))
+        , _backup_pool_monitor, SLOT(changeCheckingTimeout(int)));
 
     connect(_backup_pool_monitor, SIGNAL(succeed())
         , this, SLOT(onBackupPoolSucceed()));

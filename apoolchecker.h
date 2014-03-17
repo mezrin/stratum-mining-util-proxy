@@ -24,6 +24,9 @@ class APoolChecker : public QObject {
         //! Слот проверки активности пула.
         void check(const QString &host, int port);
 
+        //! Слот установки интервала.
+        void changeCheckingTimeout(int interval);
+
     private:
         QTcpSocket *_socket;
 

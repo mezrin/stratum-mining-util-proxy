@@ -12,6 +12,7 @@ class AMainPoolHandler : public QObject {
         void poolChanged(const QString &pool);
 
         void checkingIntervalChanged(int interval);
+        void checkingTimeoutChanged(int interval);
 
     public:
         //! Конструктор.
@@ -35,6 +36,8 @@ class AMainPoolHandler : public QObject {
 
     private:
         QTimer *_timer;
+
+        int _checking_timeout;
 
         QString _fname, _pool;
 

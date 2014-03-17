@@ -12,6 +12,7 @@ class ABackupPoolHandler : public QObject {
         void poolChanged(const QString &pool);
 
         void checkingIntervalChanged(int interval);
+        void checkingTimeoutChanged(int interval);
 
     public:
         //! Конструктор.
@@ -41,7 +42,7 @@ class ABackupPoolHandler : public QObject {
 
         QString _fname, _pool;
 
-        int _pool_index;
+        int _pool_index, _checking_timeout;
 
     private slots:
         //! Слот активации таймера.

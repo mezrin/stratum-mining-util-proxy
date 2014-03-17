@@ -7,7 +7,8 @@
 // Конструктор.
 // ========================================================================== //
 ABackupPoolHandler::ABackupPoolHandler(QObject *parent)
-    : QObject(parent), _timer(new QTimer(this)), _pool_index(0) {
+    : QObject(parent), _timer(new QTimer(this)), _pool_index(0)
+    , _checking_timeout(5) {
 
     _timer->setSingleShot(false);
     connect(_timer, SIGNAL(timeout()), this, SLOT(onTimerTimeout()));
@@ -50,7 +51,7 @@ void ABackupPoolHandler::nextPool() {++_pool_index; onTimerTimeout();}
 // Слот активации таймера.
 // ========================================================================== //
 void ABackupPoolHandler::onTimerTimeout() {
-    int checking_interval = 5;
+    int checking_interval = 5, checking_timeout = 5;
 
     QSettings settings(_fname, QSettings::IniFormat);
 
@@ -67,6 +68,18 @@ void ABackupPoolHandler::onTimerTimeout() {
     if(_timer->interval() != checking_interval_ms) {
         _timer->setInterval(checking_interval_ms);
         emit checkingIntervalChanged(checking_interval);
+    }
+
+    if(settings.contains("checking-timeout")) {
+        const int interval = settings.value("checking-timeout").toInt();
+        if(interval > 0) checking_timeout = interval;
+        else settings.remove("checking-timeout");
+
+    } else settings.setValue("checking-timeout", checking_timeout);
+
+    if(_checking_timeout != checking_timeout) {
+        _checking_timeout = checking_timeout;
+        emit checkingIntervalChanged(checking_timeout);
     }
 
     const int pools = settings.beginReadArray("Pools");
